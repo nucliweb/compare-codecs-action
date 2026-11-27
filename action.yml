@@ -15,6 +15,9 @@ inputs:
   rd:
     description: Comma-separated targets for rate-distortion mode (e.g. 70,80,85,90,95), with BD-rate against mozjpeg. Replaces target.
     default: ""
+  target-bytes:
+    description: Byte budget for budget mode (50KB is 50,000 bytes, 50KiB is 51,200, a bare number is bytes). Each codec is searched for the largest file that fits, and codecs are compared on the ssimulacra2 they reach. Replaces target; writes no HTML report and cannot be combined with rd or a baseline (image-tools 0.7.0 or later).
+    default: ""
   codecs:
     description: Comma-separated subset of jxl,avif,webp,jpegli,mozjpeg,heic, plus the opt-in variants webp-sharp,heic-444,avif-rav1e,avif-svt,jpeg-turbo, or "all" for every codec and variant. The six formats when empty.
     default: ""
@@ -67,6 +70,7 @@ runs:
         INPUT_IMAGES: ${{ inputs.images }}
         INPUT_TARGET: ${{ inputs.target }}
         INPUT_RD: ${{ inputs.rd }}
+        INPUT_TARGET_BYTES: ${{ inputs.target-bytes }}
         INPUT_CODECS: ${{ inputs.codecs }}
         INPUT_EFFORT: ${{ inputs.effort }}
         INPUT_HTML: ${{ inputs.html }}

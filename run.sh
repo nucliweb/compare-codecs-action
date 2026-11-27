@@ -7,10 +7,28 @@ IMAGE="ghcr.io/nucliweb/image-tools:${INPUT_IMAGE_VERSION}"
 WORKSPACE="${GITHUB_WORKSPACE:-$PWD}"
 OUT="${INPUT_OUTPUT_DIR}"
 RD="${INPUT_RD:-}"
+BUDGET="${INPUT_TARGET_BYTES:-}"
 BASELINE="${INPUT_BASELINE:-}"
 
 if [ -n "$RD" ] && [ -n "$BASELINE" ]; then
   echo "::error::The baseline gate checks a single target; it cannot be combined with rd."
+  exit 1
+fi
+if [ -n "$BUDGET" ] && { [ -n "$RD" ] || [ -n "$BASELINE" ]; }; then
+  echo "::error::target-bytes compares quality at one file size; it cannot be combined with rd or a baseline."
+  exit 1
+fi
+
+# True when the image is at least version $1.$2. Tags that are not a version
+# (latest, sha-…) are recent.
+image_at_least() {
+  [[ "$INPUT_IMAGE_VERSION" =~ ^([0-9]+)\.([0-9]+) ]] || return 0
+  [ "${BASH_REMATCH[1]}" -gt "$1" ] ||
+    { [ "${BASH_REMATCH[1]}" -eq "$1" ] && [ "${BASH_REMATCH[2]}" -ge "$2" ]; }
+}
+
+if [ -n "$BUDGET" ] && ! image_at_least 0 7; then
+  echo "::error::target-bytes needs image-tools 0.7.0 or later."
   exit 1
 fi
 
@@ -35,7 +53,9 @@ if [ ${#args[@]} -eq 0 ]; then
   exit 1
 fi
 
-if [ -n "$RD" ]; then
+if [ -n "$BUDGET" ]; then
+  args+=(--target-bytes "$BUDGET")
+elif [ -n "$RD" ]; then
   args+=(--rd "$RD")
 else
   args+=(--target "$INPUT_TARGET")
@@ -48,15 +68,13 @@ csv="$OUT/results.csv"
 args+=(--csv "$csv")
 
 # The report plots rate-distortion curves from image-tools 0.5.0; earlier images
-# reject --html with --rd. Tags that are not a version (latest, sha-…) are recent.
-rd_report_supported() {
-  [[ "$INPUT_IMAGE_VERSION" =~ ^([0-9]+)\.([0-9]+) ]] || return 0
-  [ "${BASH_REMATCH[1]}" -gt 0 ] || [ "${BASH_REMATCH[2]}" -ge 5 ]
-}
-
+# reject --html with --rd. It compares codecs at equal quality, so budget mode
+# writes none.
 report=""
 if [ "${INPUT_HTML}" = "true" ]; then
-  if [ -n "$RD" ] && ! rd_report_supported; then
+  if [ -n "$BUDGET" ]; then
+    echo "::notice::The HTML report compares codecs at equal quality; budget mode writes no report."
+  elif [ -n "$RD" ] && ! image_at_least 0 5; then
     echo "::notice::The HTML report in rate-distortion mode needs image-tools 0.5.0 or later; skipping it."
   else
     report="$OUT/report.html"
