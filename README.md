@@ -38,6 +38,19 @@ The table, with each codec's size, quality, encode time and peak memory, goes to
     rd: 70,80,85,90,95
 ```
 
+### Budget mode
+
+`target-bytes` asks the question a web performance budget asks: with a fixed number of bytes to spend, which codec looks best? Each codec is searched for the largest file that fits the budget, and codecs are ranked by the ssimulacra2 score they reach there. A codec that cannot fit even at its lowest quality is flagged `*` and ranked last.
+
+```yaml
+- uses: nucliweb/compare-codecs-action@v1
+  with:
+    images: assets/photos
+    target-bytes: 50KB
+```
+
+The unit is explicit: `KB` and `MB` are decimal (`50KB` is 50,000 bytes), `KiB` and `MiB` binary (`50KiB` is 51,200 bytes), and a bare number is a byte count. `target-bytes` replaces `target`, needs image-tools 0.7.0 or later and cannot be combined with `rd` or a `baseline`. The HTML report compares codecs at equal quality, so budget mode writes no report; the table goes to the job summary and the results to the CSV, with `budget_bytes` and `fits` columns. How the search works is in the [image-tools documentation](https://github.com/nucliweb/image-tools/blob/main/compare/README.md#budget-mode).
+
 ### Opt-in variants
 
 Beside the six formats, five variants each change one encoder setting, so a comparison can show what that setting is worth on your images: `webp-sharp` (WebP with sharp RGB→YUV conversion), `heic-444` (HEIC with full-resolution chroma), `avif-rav1e` and `avif-svt` (AVIF encoded by rav1e or SVT-AV1 instead of aom) and `jpeg-turbo` (plain libjpeg-turbo). Name them in `codecs`, or use `all`:
@@ -96,6 +109,7 @@ Commenting needs `pull-requests: write` in the workflow's permissions; the actio
 | `images` | required | PNG files or directories of PNGs, relative to the workspace, one per line |
 | `target` | `90` | Target ssimulacra2 score |
 | `rd` | | Comma-separated targets for rate-distortion mode; replaces `target` |
+| `target-bytes` | | Byte budget for [budget mode](#budget-mode) (`50KB`, `50KiB` or a byte count); replaces `target`, writes no report (image-tools 0.7.0 or later) |
 | `codecs` | the six formats | Comma-separated subset of `jxl,avif,webp,jpegli,mozjpeg,heic`, plus the [opt-in variants](#opt-in-variants); `all` runs every codec and variant |
 | `effort` | codec default | Matched encoder effort 0..10 (jxl, avif, webp) |
 | `html` | `true` | Write the interactive HTML report; in rate-distortion mode it plots the curves and BD-rates (image-tools 0.5.0 or later) |

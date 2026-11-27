@@ -69,6 +69,22 @@ check "exits 0" "[ $? -eq 0 ]"
 check "skips the HTML report" "[ ! -e '$WS/codec-comparison/report.html' ] && [ -z \"\$(output report)\" ]"
 check "says why" "grep -q 'needs image-tools 0.5.0' '$WS/log'"
 
+echo "budget mode"
+new_workspace
+run_action INPUT_TARGET_BYTES="2KB" INPUT_IMAGE_VERSION="0.7.0"
+check "exits 0" "[ $? -eq 0 ]"
+check "writes one CSV row per codec with the budget" "[ \$(grep -c ',2000,' '$WS/codec-comparison/results.csv') -eq 2 ]"
+check "writes the budget CSV columns" "head -1 '$WS/codec-comparison/results.csv' | grep -q '^image,codec,setting,budget_bytes,bytes,bpp,ssimulacra2,dssim,fits,'"
+check "puts the budget table in the job summary" "grep -q 'Budget: 2 KB = 2,000 bytes' '$WS/summary'"
+check "skips the HTML report" "[ ! -e '$WS/codec-comparison/report.html' ] && [ -z \"\$(output report)\" ]"
+check "says why" "grep -q 'compares codecs at equal quality' '$WS/log'"
+
+echo "budget mode on an image before 0.7.0"
+new_workspace
+run_action INPUT_TARGET_BYTES="2KB" INPUT_IMAGE_VERSION="0.6.0"
+check "fails the step" "[ $? -ne 0 ]"
+check "says why" "grep -q 'needs image-tools 0.7.0' '$WS/log'"
+
 echo "opt-in variant"
 new_workspace
 run_action INPUT_CODECS="webp,webp-sharp" INPUT_HTML="false"
@@ -109,6 +125,10 @@ check "still outputs regressed=true" "[ \"\$(output regressed)\" = true ]"
 echo "invalid combination"
 run_action INPUT_RD="75,85" INPUT_BASELINE="baseline.json"
 check "rejects rd with a baseline" "[ $? -ne 0 ] && grep -q 'baseline' '$WS/log'"
+run_action INPUT_TARGET_BYTES="2KB" INPUT_RD="75,85"
+check "rejects target-bytes with rd" "[ $? -ne 0 ] && grep -q 'target-bytes' '$WS/log'"
+run_action INPUT_TARGET_BYTES="2KB" INPUT_BASELINE="baseline.json"
+check "rejects target-bytes with a baseline" "[ $? -ne 0 ] && grep -q 'target-bytes' '$WS/log'"
 
 echo
 if [ "$FAILURES" -gt 0 ]; then
